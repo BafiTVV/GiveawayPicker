@@ -190,11 +190,15 @@
       </div>
     </main>
 
-    <!-- OBRAZOVKA 3: ADMIN PANEL -->
+    <!-- OBRAZOVKA 3: ADMIN PANEL (Vstup přes heslo BMMDB) -->
     <main id="adminScreen" class="glass-card hidden">
-      <div class="history-header" style="margin-bottom: 1rem;">
+      <div class="history-header" style="margin-bottom: 1.5rem;">
         <h3>⚙️ Správa Databáze & Reroll</h3>
-        <button class="btn-sec" onclick="closeAdminScreen()">Zpět</button>
+        <button class="btn-sec" onclick="closeAdminScreen()">Zpět na scénu</button>
+      </div>
+
+      <div style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem;">
+        <button class="btn-sec" style="flex: 1;" onclick="goToSetupScreenFromAdmin()">⚙️ Upravit nastavení & seznamy</button>
       </div>
 
       <div style="margin-bottom: 1.5rem;">
@@ -205,11 +209,10 @@
       <button class="btn-sec" style="background: rgba(253, 29, 29, 0.3); border-color: #fd1d1d; width: 100%;" onclick="resetAllData()">⚠️ Vymazat všechna data</button>
     </main>
 
-    <!-- KARTA HISTORIE -->
+    <!-- KARTA HISTORIE (Čistý přehled výherců) -->
     <div id="historyCard" class="glass-card history-section hidden">
       <div class="history-header">
         <h3>🏆 Seznam výherců</h3>
-        <button id="backToSetupBtn" class="btn-sec" onclick="goToSetupScreen()">⚙️ Upravit nastavení</button>
       </div>
       <div id="winnersList" class="history-list"></div>
     </div>
@@ -223,7 +226,7 @@
     let isRolling = false;
     let previousScreen = 'setupScreen';
     let db = {
-      prizes: [], // Může obsahovat text nebo objekt { name: "Cena", isReroll: true }
+      prizes: [],
       users: [],
       winnersHistory: []
     };
@@ -253,7 +256,6 @@
     function getPrizesFromInput() {
       const lines = document.getElementById('prizesInput').value.split('\n').map(p => p.trim()).filter(p => p.length > 0);
       return lines.map(line => {
-        // Zachová vlastnost isReroll pokud již existovala
         const existing = db.prizes.find(p => (typeof p === 'object' ? p.name : p) === line);
         if (existing && typeof existing === 'object') return existing;
         return { name: line, isReroll: false };
@@ -278,22 +280,11 @@
       saveDB();
 
       document.getElementById('setupScreen').classList.add('hidden');
-      document.getElementById('adminTriggerBtn').classList.add('hidden');
-      
       document.getElementById('rollScreen').classList.remove('hidden');
       document.getElementById('historyCard').classList.remove('hidden');
       document.getElementById('headerSubtitle').innerText = "Exkluzivní losování";
 
       updateRollUI();
-    }
-
-    function goToSetupScreen() {
-      document.getElementById('setupScreen').classList.remove('hidden');
-      document.getElementById('adminTriggerBtn').classList.remove('hidden');
-      
-      document.getElementById('rollScreen').classList.add('hidden');
-      document.getElementById('historyCard').classList.add('hidden');
-      document.getElementById('headerSubtitle').innerText = "Příprava losování";
     }
 
     function openAdminModal() {
@@ -314,6 +305,14 @@
     function closeAdminScreen() {
       document.getElementById('adminScreen').classList.add('hidden');
       document.getElementById(previousScreen).classList.remove('hidden');
+    }
+
+    function goToSetupScreenFromAdmin() {
+      document.getElementById('adminScreen').classList.add('hidden');
+      document.getElementById('rollScreen').classList.add('hidden');
+      document.getElementById('historyCard').classList.add('hidden');
+      document.getElementById('setupScreen').classList.remove('hidden');
+      document.getElementById('headerSubtitle').innerText = "Příprava losování";
     }
 
     function updateRollUI() {
@@ -439,8 +438,7 @@
     function rerollWinner(index) {
       if (confirm("Opravdu chceš vrátit tuto výhru zpět do osudí a vylosovat ji znovu jako REROLL?")) {
         const removed = db.winnersHistory.splice(index, 1)[0];
-        
-        // Vloží výhru zpět na 1. místo a nastaví jí příznak REROLL
+
         db.prizes.unshift({
           name: removed.prize,
           isReroll: true
