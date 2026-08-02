@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADMIN — IG Picker ⚙️</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: rgba(23, 32, 54, 0.6);
+      --accent-grad: linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%);
+      --text-main: #f3f4f6;
+      --border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    body {
+      background-color: var(--bg-color); color: var(--text-main);
+      min-height: 100vh; padding: 2rem 1rem; display: flex; flex-direction: column; align-items: center;
+    }
+
+    .container { max-width: 800px; width: 100%; display: flex; flex-direction: column; gap: 2rem; }
+
+    header { text-align: center; }
+    header h1 { font-size: 2.2rem; font-weight: 800; background: var(--accent-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    .glass-card {
+      background: var(--card-bg); backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color); border-radius: 24px; padding: 2rem;
+    }
+
+    .inputs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+    .input-group { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    textarea {
+      width: 100%; height: 160px; background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; color: #fff;
+    }
+
+    .btn-main {
+      width: 100%; padding: 1rem; border: none; border-radius: 12px;
+      background: var(--accent-grad); color: #fff; font-weight: 800; cursor: pointer;
+    }
+
+    .btn-danger {
+      background: rgba(253, 29, 29, 0.2); border: 1px solid #fd1d1d; color: #ff6b6b;
+      padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+    }
+
+    .winner-badge {
+      background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-color);
+      padding: 0.8rem 1.2rem; border-radius: 12px; font-weight: 600;
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>⚙️ ADMIN PANEL</h1>
+      <p>Správa výher, účastníků a rerollů</p>
+    </header>
+
+    <main class="glass-card">
+      <div class="inputs-grid">
+        <div class="input-group">
+          <label>🎁 Výhry (1 na řádek):</label>
+          <textarea id="prizesInput" placeholder="AK-47 Crane Flight&#10;FAMAS ST Mecha&#10;KUKRI Knife"></textarea>
+        </div>
+        <div class="input-group">
+          <label>👥 Účastníci (1 na řádek):</label>
+          <textarea id="usersInput" placeholder="@pepa&#10;@f.cermakkk"></textarea>
+        </div>
+      </div>
+
+      <button class="btn-main" onclick="saveSettings()">ULOŽIT DO DATABÁZE 💾</button>
+      <br><br>
+      <button style="background: transparent; border: none; color: #9ca3af; cursor: pointer; width: 100%; text-align: center;" onclick="window.location.href='index.html'">← Zpět na Losovač (Prezentaci)</button>
+    </main>
+
+    <div class="glass-card">
+      <h3 style="margin-bottom: 1rem;">🔄 Správa Výherců / Reroll</h3>
+      <div id="winnersList"></div>
+    </div>
+  </div>
+
+  <script>
+    let db = { prizes: [], users: [], winnersHistory: [] };
+
+    window.onload = function() {
+      const saved = localStorage.getItem('ig_picker_db');
+      if (saved) db = JSON.parse(saved);
+
+      document.getElementById('prizesInput').value = db.prizes.join('\n');
+      document.getElementById('usersInput').value = db.users.join('\n');
+      renderHistory();
+    };
+
+    function saveSettings() {
+      db.prizes = document.getElementById('prizesInput').value.split('\n').map(s=>s.trim()).filter(s=>s);
+      db.users = document.getElementById('usersInput').value.split('\n').map(s=>s.trim()).filter(s=>s);
+
+      localStorage.setItem('ig_picker_db', JSON.stringify(db));
+      alert("✅ Nastavení uloženo!");
+    }
+
+    function renderHistory() {
+      const list = document.getElementById('winnersList');
+      list.innerHTML = '';
+
+      if (db.winnersHistory.length === 0) {
+        list.innerHTML = '<p style="color: #9ca3af;">Zatím žádní výherci.</p>';
+        return;
+      }
+
+      db.winnersHistory.forEach((item, index) => {
+        const badge = document.createElement('div');
+        badge.className = 'winner-badge';
+        badge.innerHTML = `
+          <span>🎁 ${item.prize} — <strong>${item.user}</strong></span>
+          <button class="btn-danger" onclick="reroll(${index})">🔄 Reroll</button>
+        `;
+        list.appendChild(badge);
+      });
+    }
+
+    function reroll(index) {
+      if (confirm("Vrátit tuto výhru do osudí pro nový roll?")) {
+        const removed = db.winnersHistory.splice(index, 1)[0];
+        db.prizes.unshift(removed.prize);
+
+        localStorage.setItem('ig_picker_db', JSON.stringify(db));
+        document.getElementById('prizesInput').value = db.prizes.join('\n');
+        renderHistory();
+        alert("✅ Výhra vrácena zpět na začátek osudí.");
+      }
+    }
+  </script>
+</body>
+</html>
