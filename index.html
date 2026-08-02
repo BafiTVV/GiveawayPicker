@@ -57,6 +57,22 @@
       box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     }
 
+    .inputs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    @media (max-width: 600px) { .inputs-grid { grid-template-columns: 1fr; } }
+
+    .input-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    label { font-weight: 600; font-size: 0.95rem; color: var(--text-main); }
+
+    textarea {
+      width: 100%; height: 140px; background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem;
+      color: #fff; font-size: 0.95rem; resize: vertical; transition: all 0.3s ease;
+    }
+    textarea:focus { outline: none; border-color: #fd1d1d; box-shadow: 0 0 15px var(--glow-color); }
+
+    .stats { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+
+    /* Slot Machine Reel */
     .slot-container {
       position: relative; min-height: 140px; padding: 1.5rem;
       background: rgba(0, 0, 0, 0.5); border-radius: 16px; border: 2px solid var(--border-color);
@@ -82,13 +98,20 @@
     .btn-main:hover { transform: translateY(-2px); box-shadow: 0 15px 35px var(--glow-color); }
     .btn-main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
+    .btn-sec {
+      background: rgba(255, 255, 255, 0.1); border: 1px solid var(--border-color);
+      color: #fff; padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer; font-weight: 600;
+    }
+
     .congrats-banner {
       background: var(--accent-grad); padding: 1.5rem; border-radius: 16px;
       text-align: center; font-size: 1.8rem; font-weight: 800; color: #fff;
       box-shadow: 0 10px 30px var(--glow-color); animation: fadeIn 0.5s ease;
     }
 
+    /* History section */
     .history-section { display: flex; flex-direction: column; gap: 1rem; }
+    .history-header { display: flex; justify-content: space-between; align-items: center; }
     .history-list { display: flex; flex-direction: column; gap: 0.75rem; }
 
     .winner-badge {
@@ -99,8 +122,15 @@
     .winner-badge .prize-tag { color: #fcb045; font-weight: 800; }
     .winner-badge .user-tag { color: #fff; font-size: 1.1rem; }
 
+    .reroll-btn {
+      background: rgba(253, 29, 29, 0.2); border: 1px solid #fd1d1d; color: #ff6b6b;
+      padding: 0.3rem 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.75rem;
+    }
+    .reroll-btn:hover { background: #fd1d1d; color: #fff; }
+
     footer { margin-top: 3rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; font-weight: 600; }
     footer span { background: var(--accent-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -108,12 +138,34 @@
 
   <div class="container">
     <header>
-      <button class="admin-btn" onclick="openAdmin()">🔒 Admin</button>
+      <!-- Admin tlačítko (zobrazuje se pouze na Obrazovce 1) -->
+      <button id="adminTriggerBtn" class="admin-btn" onclick="openAdminModal()">🔒 Admin</button>
       <h1>INSTAGRAM LOSOVAČ 🎁</h1>
-      <p>Exkluzivní losování výherců</p>
+      <p id="headerSubtitle">Příprava losování</p>
     </header>
 
-    <main class="glass-card">
+    <!-- OBRAZOVKA 1: PŘÍPRAVA NASTAVENÍ -->
+    <main id="setupScreen" class="glass-card">
+      <div class="inputs-grid">
+        <div class="input-group">
+          <label for="prizesInput">🎁 Seznam výher (1 na řádek):</label>
+          <textarea id="prizesInput" placeholder="AK-47 Crane Flight (FT)&#10;FAMAS ST Mecha Industries (WW)&#10;KUKRI Knife Boreal Forest (FT)"></textarea>
+        </div>
+        <div class="input-group">
+          <label for="usersInput">👥 Seznam účastníků (Ctrl+V):</label>
+          <textarea id="usersInput" placeholder="Zde vlož zkopírovaná jména z konzole (@jméno)..." oninput="updateCount()"></textarea>
+        </div>
+      </div>
+
+      <div class="stats">
+        <span>Počet načtených účtů: <strong id="userCount" style="color: #fff;">0</strong></span>
+      </div>
+
+      <button class="btn-main" onclick="goToRollScreen()">PŘEJÍT K LOSOVÁNÍ 🚀</button>
+    </main>
+
+    <!-- OBRAZOVKA 2: PREZENTACE LOSOVÁNÍ (Pro OBS/Stream/Reels - bez admin tlačítek) -->
+    <main id="rollScreen" class="glass-card hidden">
       <div id="slotContainer" class="slot-container">
         <div id="slotPrize" class="slot-prize">PŘIPRAVENO</div>
         <div id="slotDisplay" class="slot-name">---</div>
@@ -128,8 +180,27 @@
       </div>
     </main>
 
-    <div class="glass-card history-section">
-      <h3>🏆 Seznam výherců</h3>
+    <!-- OBRAZOVKA 3: SPRÁVA/ADMIN PANEL (Zabezpečen heslem BMMDB) -->
+    <main id="adminScreen" class="glass-card hidden">
+      <div class="history-header" style="margin-bottom: 1rem;">
+        <h3>⚙️ Správa Databáze & Reroll</h3>
+        <button class="btn-sec" onclick="closeAdminScreen()">Zpět</button>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <h4>🏆 Historie výher (Reroll):</h4>
+        <div id="adminWinnersList" class="history-list" style="margin-top: 0.5rem;"></div>
+      </div>
+
+      <button class="btn-sec" style="background: rgba(253, 29, 29, 0.3); border-color: #fd1d1d; width: 100%;" onclick="resetAllData()">⚠️ Vymazat všechna data</button>
+    </main>
+
+    <!-- KARTA HISTORIE (Čistý přehled pro stream) -->
+    <div id="historyCard" class="glass-card history-section hidden">
+      <div class="history-header">
+        <h3>🏆 Seznam výherců</h3>
+        <button id="backToSetupBtn" class="btn-sec" onclick="goToSetupScreen()">⚙️ Upravit nastavení</button>
+      </div>
       <div id="winnersList" class="history-list"></div>
     </div>
   </div>
@@ -140,37 +211,104 @@
 
   <script>
     let isRolling = false;
-    let db = { prizes: [], users: [], winnersHistory: [] };
-
-    window.onload = function() {
-      loadDB();
-      updateUI();
+    let previousScreen = 'setupScreen';
+    let db = {
+      prizes: [],
+      users: [],
+      winnersHistory: []
     };
 
-    function loadDB() {
-      const saved = localStorage.getItem('ig_picker_db');
-      if (saved) db = JSON.parse(saved);
-    }
+    window.onload = function() {
+      const savedData = localStorage.getItem('ig_picker_db');
+      if (savedData) {
+        db = JSON.parse(savedData);
+        if (db.prizes.length > 0) document.getElementById('prizesInput').value = db.prizes.join('\n');
+        if (db.users.length > 0) {
+          document.getElementById('usersInput').value = db.users.join('\n');
+          updateCount();
+        }
+      }
+    };
 
     function saveDB() {
       localStorage.setItem('ig_picker_db', JSON.stringify(db));
     }
 
-    function openAdmin() {
-      const pass = prompt("Zadej heslo pro vstup do Administrace:");
+    function getCleanUsers() {
+      return document.getElementById('usersInput').value.split('\n').map(u => u.trim()).filter(u => u.length > 0);
+    }
+
+    function getPrizes() {
+      return document.getElementById('prizesInput').value.split('\n').map(p => p.trim()).filter(p => p.length > 0);
+    }
+
+    function updateCount() {
+      document.getElementById('userCount').innerText = getCleanUsers().length;
+    }
+
+    /* PŘECHOD NA OBRAZOVKU 2 (ČISTÉ LOSOVÁNÍ PRO VIDEO/STREAM) */
+    function goToRollScreen() {
+      const users = getCleanUsers();
+      const prizes = getPrizes();
+
+      if (users.length === 0) {
+        alert("⚠️ Nejprve do pole vlož seznam jmen!");
+        return;
+      }
+
+      db.users = users;
+      db.prizes = prizes;
+      saveDB();
+
+      // Skrýt formuláře i tlačítko Admin pro čerstvý čistý vzhled
+      document.getElementById('setupScreen').classList.add('hidden');
+      document.getElementById('adminTriggerBtn').classList.add('hidden');
+      
+      // Zobrazit čisté losovací okno a historii výherců
+      document.getElementById('rollScreen').classList.remove('hidden');
+      document.getElementById('historyCard').classList.remove('hidden');
+      document.getElementById('headerSubtitle').innerText = "Exkluzivní losování";
+
+      updateRollUI();
+    }
+
+    /* PŘECHOD ZPĚT NA OBRAZOVKU 1 (PŘÍPRAVA) */
+    function goToSetupScreen() {
+      document.getElementById('setupScreen').classList.remove('hidden');
+      document.getElementById('adminTriggerBtn').classList.remove('hidden');
+      
+      document.getElementById('rollScreen').classList.add('hidden');
+      document.getElementById('historyCard').classList.add('hidden');
+      document.getElementById('headerSubtitle').innerText = "Příprava losování";
+    }
+
+    /* ADMIN SEKCIE (ZABEZPEČENO HESLEM BMMDB) */
+    function openAdminModal() {
+      const pass = prompt("Zadej heslo pro vstup do Adminu:");
       if (pass === "BMMDB") {
-        window.location.href = "admin.html";
+        if (!document.getElementById('setupScreen').classList.contains('hidden')) previousScreen = 'setupScreen';
+        else if (!document.getElementById('rollScreen').classList.contains('hidden')) previousScreen = 'rollScreen';
+
+        document.getElementById('setupScreen').classList.add('hidden');
+        document.getElementById('rollScreen').classList.add('hidden');
+        document.getElementById('adminScreen').classList.remove('hidden');
+        renderAdminHistory();
       } else if (pass !== null) {
         alert("❌ Nesprávné heslo!");
       }
     }
 
-    function updateUI() {
+    function closeAdminScreen() {
+      document.getElementById('adminScreen').classList.add('hidden');
+      document.getElementById(previousScreen).classList.remove('hidden');
+    }
+
+    function updateRollUI() {
       const slotPrize = document.getElementById('slotPrize');
       const congratsBanner = document.getElementById('congratsBanner');
       const controlsContainer = document.getElementById('controlsContainer');
 
-      renderHistory();
+      renderCleanHistory();
 
       if (db.prizes.length > 0) {
         slotPrize.innerText = `NÁSLEDUJÍCÍ VÝHRA: ${db.prizes[0]}`;
@@ -182,17 +320,13 @@
         slotPrize.innerText = "SOUTĚŽ UKONČENA";
         document.getElementById('slotDisplay').innerText = "Všechny ceny rozlosovány!";
       } else {
-        slotPrize.innerText = "ŽÁDNÉ VÝHRY (PŘIHLAŠ SE DO ADMINU)";
-        document.getElementById('slotDisplay').innerText = "Čekání na nastavení...";
+        slotPrize.innerText = "ŽÁDNÉ VÝHRY NEBYLY ZADÁNY";
       }
     }
 
+    /* 3 SECONDS ROLL ANIMATION */
     function startRoll() {
-      loadDB();
-      if (db.users.length === 0 || db.prizes.length === 0) {
-        alert("⚠️ Žádní účastníci nebo výhry! Přejdi do Adminu (heslo BMMDB) a vlož je.");
-        return;
-      }
+      if (db.users.length === 0 || db.prizes.length === 0) return;
       if (isRolling) return;
       isRolling = true;
 
@@ -231,18 +365,23 @@
           db.prizes.shift();
           saveDB();
 
+          // Aktualizace pole s výhrami v nastavení
+          document.getElementById('prizesInput').value = db.prizes.join('\n');
+
           rollBtn.disabled = false;
           isRolling = false;
-          updateUI();
+          updateRollUI();
         }
       }
 
       animate();
     }
 
-    function renderHistory() {
+    /* RENDER ČISTÉ HISTORIE PRO OBRAZOVKU LOSOVÁNÍ */
+    function renderCleanHistory() {
       const list = document.getElementById('winnersList');
       list.innerHTML = '';
+
       db.winnersHistory.forEach(item => {
         const badge = document.createElement('div');
         badge.className = 'winner-badge';
@@ -252,6 +391,48 @@
         `;
         list.appendChild(badge);
       });
+    }
+
+    /* RENDER HISTORIE V ADMINU S TLAČÍTKY REROLL */
+    function renderAdminHistory() {
+      const list = document.getElementById('adminWinnersList');
+      list.innerHTML = '';
+
+      if (db.winnersHistory.length === 0) {
+        list.innerHTML = '<p style="color: #9ca3af;">Zatím žádní výherci.</p>';
+        return;
+      }
+
+      db.winnersHistory.forEach((item, index) => {
+        const badge = document.createElement('div');
+        badge.className = 'winner-badge';
+        badge.innerHTML = `
+          <span>🎁 ${item.prize} — <strong style="color: #fff;">${item.user}</strong></span>
+          <button class="reroll-btn" onclick="rerollWinner(${index})">🔄 Reroll</button>
+        `;
+        list.appendChild(badge);
+      });
+    }
+
+    /* FUNKCE REROLL (Vrátí výhru zpět do osudí) */
+    function rerollWinner(index) {
+      if (confirm("Opravdu chceš vrátit tuto výhru zpět do osudí a vylosovat ji znovu?")) {
+        const removed = db.winnersHistory.splice(index, 1)[0];
+        db.prizes.unshift(removed.prize);
+        saveDB();
+
+        document.getElementById('prizesInput').value = db.prizes.join('\n');
+        renderAdminHistory();
+        updateRollUI();
+        alert("✅ Výhra byla vrácena na první místo osudí!");
+      }
+    }
+
+    function resetAllData() {
+      if (confirm("⚠️ Opravdu chceš smazat všechna data (výhry, účastníky i historii)?")) {
+        localStorage.removeItem('ig_picker_db');
+        location.reload();
+      }
     }
   </script>
 </body>
