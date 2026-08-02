@@ -122,6 +122,17 @@
     .winner-badge .prize-tag { color: #fcb045; font-weight: 800; }
     .winner-badge .user-tag { color: #fff; font-size: 1.1rem; }
 
+    .reroll-tag {
+      background: rgba(253, 29, 29, 0.2);
+      border: 1px solid #fd1d1d;
+      color: #ff6b6b;
+      font-size: 0.75rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+      font-weight: 800;
+    }
+
     .reroll-btn {
       background: rgba(253, 29, 29, 0.2); border: 1px solid #fd1d1d; color: #ff6b6b;
       padding: 0.3rem 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.75rem;
@@ -138,7 +149,6 @@
 
   <div class="container">
     <header>
-      <!-- Admin tlačítko (zobrazuje se pouze na Obrazovce 1) -->
       <button id="adminTriggerBtn" class="admin-btn" onclick="openAdminModal()">🔒 Admin</button>
       <h1>INSTAGRAM LOSOVAČ 🎁</h1>
       <p id="headerSubtitle">Příprava losování</p>
@@ -164,7 +174,7 @@
       <button class="btn-main" onclick="goToRollScreen()">PŘEJÍT K LOSOVÁNÍ 🚀</button>
     </main>
 
-    <!-- OBRAZOVKA 2: PREZENTACE LOSOVÁNÍ (Pro OBS/Stream/Reels - bez admin tlačítek) -->
+    <!-- OBRAZOVKA 2: PREZENTACE LOSOVÁNÍ -->
     <main id="rollScreen" class="glass-card hidden">
       <div id="slotContainer" class="slot-container">
         <div id="slotPrize" class="slot-prize">PŘIPRAVENO</div>
@@ -180,7 +190,7 @@
       </div>
     </main>
 
-    <!-- OBRAZOVKA 3: SPRÁVA/ADMIN PANEL (Zabezpečen heslem BMMDB) -->
+    <!-- OBRAZOVKA 3: ADMIN PANEL -->
     <main id="adminScreen" class="glass-card hidden">
       <div class="history-header" style="margin-bottom: 1rem;">
         <h3>⚙️ Správa Databáze & Reroll</h3>
@@ -195,7 +205,7 @@
       <button class="btn-sec" style="background: rgba(253, 29, 29, 0.3); border-color: #fd1d1d; width: 100%;" onclick="resetAllData()">⚠️ Vymazat všechna data</button>
     </main>
 
-    <!-- KARTA HISTORIE (Čistý přehled pro stream) -->
+    <!-- KARTA HISTORIE -->
     <div id="historyCard" class="glass-card history-section hidden">
       <div class="history-header">
         <h3>🏆 Seznam výherců</h3>
@@ -213,7 +223,7 @@
     let isRolling = false;
     let previousScreen = 'setupScreen';
     let db = {
-      prizes: [],
+      prizes: [], // Může obsahovat text nebo objekt { name: "Cena", isReroll: true }
       users: [],
       winnersHistory: []
     };
@@ -222,7 +232,9 @@
       const savedData = localStorage.getItem('ig_picker_db');
       if (savedData) {
         db = JSON.parse(savedData);
-        if (db.prizes.length > 0) document.getElementById('prizesInput').value = db.prizes.join('\n');
+        if (db.prizes.length > 0) {
+          document.getElementById('prizesInput').value = db.prizes.map(p => typeof p === 'object' ? p.name : p).join('\n');
+        }
         if (db.users.length > 0) {
           document.getElementById('usersInput').value = db.users.join('\n');
           updateCount();
@@ -238,18 +250,23 @@
       return document.getElementById('usersInput').value.split('\n').map(u => u.trim()).filter(u => u.length > 0);
     }
 
-    function getPrizes() {
-      return document.getElementById('prizesInput').value.split('\n').map(p => p.trim()).filter(p => p.length > 0);
+    function getPrizesFromInput() {
+      const lines = document.getElementById('prizesInput').value.split('\n').map(p => p.trim()).filter(p => p.length > 0);
+      return lines.map(line => {
+        // Zachová vlastnost isReroll pokud již existovala
+        const existing = db.prizes.find(p => (typeof p === 'object' ? p.name : p) === line);
+        if (existing && typeof existing === 'object') return existing;
+        return { name: line, isReroll: false };
+      });
     }
 
     function updateCount() {
       document.getElementById('userCount').innerText = getCleanUsers().length;
     }
 
-    /* PŘECHOD NA OBRAZOVKU 2 (ČISTÉ LOSOVÁNÍ PRO VIDEO/STREAM) */
     function goToRollScreen() {
       const users = getCleanUsers();
-      const prizes = getPrizes();
+      const prizes = getPrizesFromInput();
 
       if (users.length === 0) {
         alert("⚠️ Nejprve do pole vlož seznam jmen!");
@@ -260,11 +277,9 @@
       db.prizes = prizes;
       saveDB();
 
-      // Skrýt formuláře i tlačítko Admin pro čerstvý čistý vzhled
       document.getElementById('setupScreen').classList.add('hidden');
       document.getElementById('adminTriggerBtn').classList.add('hidden');
       
-      // Zobrazit čisté losovací okno a historii výherců
       document.getElementById('rollScreen').classList.remove('hidden');
       document.getElementById('historyCard').classList.remove('hidden');
       document.getElementById('headerSubtitle').innerText = "Exkluzivní losování";
@@ -272,7 +287,6 @@
       updateRollUI();
     }
 
-    /* PŘECHOD ZPĚT NA OBRAZOVKU 1 (PŘÍPRAVA) */
     function goToSetupScreen() {
       document.getElementById('setupScreen').classList.remove('hidden');
       document.getElementById('adminTriggerBtn').classList.remove('hidden');
@@ -282,7 +296,6 @@
       document.getElementById('headerSubtitle').innerText = "Příprava losování";
     }
 
-    /* ADMIN SEKCIE (ZABEZPEČENO HESLEM BMMDB) */
     function openAdminModal() {
       const pass = prompt("Zadej heslo pro vstup do Adminu:");
       if (pass === "BMMDB") {
@@ -311,7 +324,11 @@
       renderCleanHistory();
 
       if (db.prizes.length > 0) {
-        slotPrize.innerText = `NÁSLEDUJÍCÍ VÝHRA: ${db.prizes[0]}`;
+        const nextPrize = db.prizes[0];
+        const prizeName = typeof nextPrize === 'object' ? nextPrize.name : nextPrize;
+        const isReroll = typeof nextPrize === 'object' && nextPrize.isReroll;
+
+        slotPrize.innerText = `NÁSLEDUJÍCÍ VÝHRA: ${prizeName} ${isReroll ? '(REROLL)' : ''}`;
         controlsContainer.classList.remove('hidden');
         congratsBanner.classList.add('hidden');
       } else if (db.winnersHistory.length > 0) {
@@ -324,7 +341,6 @@
       }
     }
 
-    /* 3 SECONDS ROLL ANIMATION */
     function startRoll() {
       if (db.users.length === 0 || db.prizes.length === 0) return;
       if (isRolling) return;
@@ -338,7 +354,10 @@
       rollBtn.disabled = true;
       slotContainer.classList.remove('winner');
 
-      const currentPrize = db.prizes[0];
+      const currentPrizeObj = db.prizes[0];
+      const prizeName = typeof currentPrizeObj === 'object' ? currentPrizeObj.name : currentPrizeObj;
+      const isReroll = typeof currentPrizeObj === 'object' && currentPrizeObj.isReroll;
+
       const winnerIndex = Math.floor(Math.random() * db.users.length);
       const winner = db.users[winnerIndex];
 
@@ -356,17 +375,16 @@
           setTimeout(animate, intervalSpeed);
         } else {
           slotDisplay.innerText = winner;
-          slotPrize.innerText = `🎉 ${currentPrize}`;
+          slotPrize.innerText = `🎉 ${prizeName} ${isReroll ? '(REROLL)' : ''}`;
           slotContainer.classList.add('winner');
           
           confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
 
-          db.winnersHistory.unshift({ prize: currentPrize, user: winner });
+          db.winnersHistory.unshift({ prize: prizeName, user: winner, isReroll: isReroll });
           db.prizes.shift();
           saveDB();
 
-          // Aktualizace pole s výhrami v nastavení
-          document.getElementById('prizesInput').value = db.prizes.join('\n');
+          document.getElementById('prizesInput').value = db.prizes.map(p => typeof p === 'object' ? p.name : p).join('\n');
 
           rollBtn.disabled = false;
           isRolling = false;
@@ -377,7 +395,6 @@
       animate();
     }
 
-    /* RENDER ČISTÉ HISTORIE PRO OBRAZOVKU LOSOVÁNÍ */
     function renderCleanHistory() {
       const list = document.getElementById('winnersList');
       list.innerHTML = '';
@@ -386,14 +403,16 @@
         const badge = document.createElement('div');
         badge.className = 'winner-badge';
         badge.innerHTML = `
-          <span class="prize-tag">🎁 ${item.prize}</span>
+          <span class="prize-tag">
+            🎁 ${item.prize}
+            ${item.isReroll ? '<span class="reroll-tag">REROLL</span>' : ''}
+          </span>
           <span class="user-tag">${item.user}</span>
         `;
         list.appendChild(badge);
       });
     }
 
-    /* RENDER HISTORIE V ADMINU S TLAČÍTKY REROLL */
     function renderAdminHistory() {
       const list = document.getElementById('adminWinnersList');
       list.innerHTML = '';
@@ -407,24 +426,32 @@
         const badge = document.createElement('div');
         badge.className = 'winner-badge';
         badge.innerHTML = `
-          <span>🎁 ${item.prize} — <strong style="color: #fff;">${item.user}</strong></span>
+          <span>
+            🎁 ${item.prize} ${item.isReroll ? '<span class="reroll-tag">REROLL</span>' : ''} — 
+            <strong style="color: #fff;">${item.user}</strong>
+          </span>
           <button class="reroll-btn" onclick="rerollWinner(${index})">🔄 Reroll</button>
         `;
         list.appendChild(badge);
       });
     }
 
-    /* FUNKCE REROLL (Vrátí výhru zpět do osudí) */
     function rerollWinner(index) {
-      if (confirm("Opravdu chceš vrátit tuto výhru zpět do osudí a vylosovat ji znovu?")) {
+      if (confirm("Opravdu chceš vrátit tuto výhru zpět do osudí a vylosovat ji znovu jako REROLL?")) {
         const removed = db.winnersHistory.splice(index, 1)[0];
-        db.prizes.unshift(removed.prize);
+        
+        // Vloží výhru zpět na 1. místo a nastaví jí příznak REROLL
+        db.prizes.unshift({
+          name: removed.prize,
+          isReroll: true
+        });
+        
         saveDB();
 
-        document.getElementById('prizesInput').value = db.prizes.join('\n');
+        document.getElementById('prizesInput').value = db.prizes.map(p => typeof p === 'object' ? p.name : p).join('\n');
         renderAdminHistory();
         updateRollUI();
-        alert("✅ Výhra byla vrácena na první místo osudí!");
+        alert("✅ Výhra byla vrácena na první místo jako REROLL!");
       }
     }
 
