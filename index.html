@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Instagram Giveaway Picker 🎯</title>
-  <!-- Google Fonts & Canvas Confetti -->
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
@@ -76,11 +75,23 @@
       box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     }
 
+    .inputs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .inputs-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .input-group {
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
+      gap: 0.5rem;
     }
 
     label {
@@ -113,42 +124,35 @@
       justify-content: space-between;
       color: var(--text-muted);
       font-size: 0.85rem;
-      margin-top: -0.5rem;
       margin-bottom: 1.5rem;
     }
 
     /* Slot Machine Reel */
     .slot-container {
       position: relative;
-      height: 120px;
+      min-height: 120px;
+      padding: 1rem;
       background: rgba(0, 0, 0, 0.5);
       border-radius: 16px;
       border: 2px solid var(--border-color);
       overflow: hidden;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
       margin-bottom: 1.5rem;
+      text-align: center;
     }
 
-    .slot-container::before, .slot-container::after {
-      content: '';
-      position: absolute;
-      left: 0; right: 0;
-      height: 30px;
-      z-index: 2;
-      pointer-events: none;
-    }
-
-    .slot-container::before {
-      top: 0;
-      background: linear-gradient(to bottom, rgba(11,15,25,0.9), transparent);
-    }
-
-    .slot-container::after {
-      bottom: 0;
-      background: linear-gradient(to top, rgba(11,15,25,0.9), transparent);
+    .slot-prize {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fcb045;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.2rem;
+      display: none;
     }
 
     .slot-name {
@@ -157,20 +161,23 @@
       letter-spacing: 1px;
       color: #fff;
       text-shadow: 0 0 10px rgba(255,255,255,0.3);
-      transition: transform 0.1s ease;
     }
 
-    .slot-name.winner {
-      font-size: 2.6rem;
+    .slot-container.winner .slot-prize {
+      display: block;
+    }
+
+    .slot-container.winner .slot-name {
+      font-size: 2.5rem;
       background: var(--accent-grad);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      animation: pulse 0.6s infinite alternate;
+      animation: pulse 0.5s infinite alternate;
     }
 
     @keyframes pulse {
       from { transform: scale(1); }
-      to { transform: scale(1.08); }
+      to { transform: scale(1.06); }
     }
 
     .btn-roll {
@@ -207,20 +214,30 @@
 
     .history-list {
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
       gap: 0.75rem;
     }
 
     .winner-badge {
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--border-color);
-      padding: 0.6rem 1.2rem;
-      border-radius: 50px;
+      padding: 0.8rem 1.2rem;
+      border-radius: 12px;
       font-weight: 600;
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 0.5rem;
       animation: fadeIn 0.4s ease;
+    }
+
+    .winner-badge .prize-tag {
+      color: #fcb045;
+      font-weight: 800;
+    }
+
+    .winner-badge .user-tag {
+      color: #fff;
+      font-size: 1.1rem;
     }
 
     @keyframes fadeIn {
@@ -255,20 +272,27 @@
     </header>
 
     <main class="glass-card">
-      <div class="input-group">
-        <label for="usersInput">Seznam účastníků (Ctrl+V):</label>
-        <textarea id="usersInput" placeholder="Zde vlož zkopírovaná jména z konzole (@jméno)..." oninput="updateCount()"></textarea>
+      <div class="inputs-grid">
+        <div class="input-group">
+          <label for="prizesInput">🎁 Seznam výher (1 na řádek):</label>
+          <textarea id="prizesInput" placeholder="1. Místo: IPhone&#10;2. Místo: Poukaz 1000Kč&#10;3. Místo: Merch"></textarea>
+        </div>
+        <div class="input-group">
+          <label for="usersInput">👥 Seznam účastníků (Ctrl+V):</label>
+          <textarea id="usersInput" placeholder="Zde vlož zkopírovaná jména z konzole (@jméno)..." oninput="updateCount()"></textarea>
+        </div>
       </div>
 
       <div class="stats">
         <span>Počet načtených účtů: <strong id="userCount" style="color: #fff;">0</strong></span>
       </div>
 
-      <div class="slot-container">
+      <div id="slotContainer" class="slot-container">
+        <div id="slotPrize" class="slot-prize"></div>
         <div id="slotDisplay" class="slot-name">Připraveno k losování</div>
       </div>
 
-      <button id="rollBtn" class="btn-roll" onclick="startRoll()">SPUSTIT LOSOVÁNÍ 🚀</button>
+      <button id="rollBtn" class="btn-roll" onclick="startRoll()">SPUSTIT LOSOVÁNÍ (3s) 🚀</button>
     </main>
 
     <div class="glass-card history-section">
@@ -293,6 +317,13 @@
                  .filter(u => u.length > 0);
     }
 
+    function getPrizes() {
+      const text = document.getElementById('prizesInput').value;
+      return text.split('\n')
+                 .map(p => p.trim())
+                 .filter(p => p.length > 0);
+    }
+
     function updateCount() {
       const users = getCleanUsers();
       document.getElementById('userCount').innerText = users.length;
@@ -300,6 +331,7 @@
 
     function startRoll() {
       const users = getCleanUsers();
+      const prizes = getPrizes();
 
       if (users.length === 0) {
         alert("⚠️ Nejprve do pole vlož seznam jmen!");
@@ -310,34 +342,54 @@
       isRolling = true;
 
       const rollBtn = document.getElementById('rollBtn');
+      const slotContainer = document.getElementById('slotContainer');
       const slotDisplay = document.getElementById('slotDisplay');
+      const slotPrize = document.getElementById('slotPrize');
       
       rollBtn.disabled = true;
-      slotDisplay.classList.remove('winner');
+      slotContainer.classList.remove('winner');
+      slotPrize.style.display = 'none';
 
-      let counter = 0;
-      let totalRounds = 40;
-      let speed = 50;
+      // Náhodná výhra (nebo první v seznamu, pokud je zadaná)
+      const currentPrize = prizes.length > 0 ? prizes[0] : "Výhra";
 
+      // Náhodný výherce
       const winnerIndex = Math.floor(Math.random() * users.length);
       const winner = users[winnerIndex];
 
-      function animate() {
-        const randomName = users[Math.floor(Math.random() * users.length)];
-        slotDisplay.innerText = randomName;
-        counter++;
+      const duration = 3000; // Přesně 3 sekundy
+      const startTime = Date.now();
+      let intervalSpeed = 25; // Rychlé střídání (každých 25ms)
 
-        if (counter < totalRounds) {
-          if (counter > totalRounds - 15) {
-            speed += 20;
+      function animate() {
+        const elapsedTime = Date.now() - startTime;
+
+        if (elapsedTime < duration) {
+          // Během 3s se velmi rychle střídají náhodná jména
+          const randomName = users[Math.floor(Math.random() * users.length)];
+          slotDisplay.innerText = randomName;
+
+          // Mírné plynulé zpomalení těsně před koncem (posledních 800ms)
+          if (elapsedTime > duration - 800) {
+            intervalSpeed += 5;
           }
-          setTimeout(animate, speed);
+
+          setTimeout(animate, intervalSpeed);
         } else {
+          // Zastavení na výherci po 3s
           slotDisplay.innerText = winner;
-          slotDisplay.classList.add('winner');
+          slotPrize.innerText = `🎉 ${currentPrize}`;
+          slotPrize.style.display = 'block';
+          slotContainer.classList.add('winner');
           
           fireConfetti();
-          addWinnerToHistory(winner);
+          addWinnerToHistory(currentPrize, winner);
+
+          // Pokud bylo více výher, odebereme odehranou výhru ze seznamu
+          if (prizes.length > 0) {
+            prizes.shift();
+            document.getElementById('prizesInput').value = prizes.join('\n');
+          }
 
           rollBtn.disabled = false;
           isRolling = false;
@@ -349,17 +401,20 @@
 
     function fireConfetti() {
       confetti({
-        particleCount: 120,
-        spread: 70,
+        particleCount: 150,
+        spread: 80,
         origin: { y: 0.6 }
       });
     }
 
-    function addWinnerToHistory(winner) {
+    function addWinnerToHistory(prize, winner) {
       const list = document.getElementById('winnersList');
       const badge = document.createElement('div');
       badge.className = 'winner-badge';
-      badge.innerHTML = `🎉 <span>${winner}</span>`;
+      badge.innerHTML = `
+        <span class="prize-tag">🎁 ${prize}</span>
+        <span class="user-tag">${winner}</span>
+      `;
       list.prepend(badge);
     }
   </script>
